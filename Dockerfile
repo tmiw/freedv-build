@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.authors="mooneer@gmail.com"
 
 # Install prerequisite packages for building stuff in the first place
 RUN apt-get update && \
-    apt-get -y install build-essential cmake nsis git automake autoconf libtool pkg-config tar gzip wget xvfb curl software-properties-common libssl-devel lzma-devel libxml2-devel xz bzip2 cpio libbz2 libbz2-devel zlib1g-devel
+    apt-get -y install build-essential unzip cmake nsis git automake autoconf libtool pkg-config tar gzip wget xvfb curl software-properties-common  cpio libssl-dev lzma-dev libxml2-dev xz-utils bzip2 libbz2-dev zlib1g-dev clang llvm-dev uuid-dev bash patch make xz-utils sed liblzma-dev
 
 # Set up WINE (for Windows build).
 RUN dpkg --add-architecture i386 && \
@@ -33,12 +33,13 @@ RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-
 
 # Set up macOS Clang (macOS build)
 COPY Command_Line_Tools_for_Xcode_16.2.dmg /Command_Line_Tools_for_Xcode_16.2.dmg
+ARG UNATTENDED=1 INSTALLPREFIX=/opt/macos ENABLE_CLANG_INSTALL=1
 RUN git clone https://github.com/tpoechtrager/osxcross && \
     cd osxcross && \
-    ./tools/gen_sdk_package_tools_dmg.sh /Command_Line_Tools_for_Xcode_16.2.dmg && \
+    ./build_apple_clang.sh && \
+    PATH=/opt/macos/bin:$PATH ./tools/gen_sdk_package_tools_dmg.sh /Command_Line_Tools_for_Xcode_16.2.dmg && \
     mv *.tar.* tarballs/ && \
-    INSTALLPREFIX=/opt/macos ./build_apple_clang.sh && \
-    PATH=/opt/macos/bin:$PATH TARGET_DIR=/opt/macos UNATTENDED=1 ./build.sh && \
+    PATH=/opt/macos/bin:$PATH TARGET_DIR=/opt/macos SDK_VERSION=15 ./build.sh && \
     cd .. && rm -rf osxcross /Command_Line_Tools_for_Xcode_16.2.dmg
 
 # Copy cross-compilation files for FreeDV dependencies that use CMake.
