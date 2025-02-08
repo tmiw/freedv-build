@@ -112,68 +112,69 @@ RUN git clone --recursive https://github.com/socketio/socket.io-client-cpp.git &
     cd ../.. && rm -rf socket.io-client-cpp
 
 ## Build depednency: wxWidgets
-#RUN git clone --recursive -b v3.2.6 https://github.com/wxWidgets/wxWidgets.git && \
-#    cd wxWidgets && \
-#    mkdir build_windows && \
-#    cd build_windows && \
-#    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DwxBUILD_SHARED=OFF -DwxBUILD_SHARED=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
-#    PATH=/opt/windows/bin:$PATH make -j6 install && \
-#    cd .. && mkdir build_macos && cd build_macos && \
-#    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DwxBUILD_SHARED=OFF -DwxBUILD_SHARED=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
-#    PATH=/opt/macos/bin:$PATH make -j6 install && \
-#    cd ../.. && rm -rf wxWidgets
-#
-## Build dependency: portaudio
-#RUN git clone https://github.com/PortAudio/portaudio.git && \
-#    cd portaudio && \
-#    mkdir build_windows && \
-#    cd build_windows && \
-#    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
-#    PATH=/opt/windows/bin:$PATH make -j6 install && \
-#    cd .. && mkdir build_macos && cd build_macos && \
-#    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
-#    PATH=/opt/macos/bin:$PATH make -j6 install && \
-#    cd ../.. && rm -rf portaudio
-#
+RUN wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.6/wxWidgets-3.2.6.tar.bz2 && \
+    tar xvjf wxWidgets-3.2.6.tar.bz2 && \
+    cd wxWidgets-3.2.6 && \
+    mkdir build_windows && \
+    cd build_windows && \
+    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DwxBUILD_SHARED=OFF -DwxBUILD_PRECOMP=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
+    PATH=/opt/windows/bin:$PATH make -j6 install && \
+    cd .. && mkdir build_macos && cd build_macos && \
+    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DwxBUILD_SHARED=OFF -DwxBUILD_PRECOMP=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
+    PATH=/opt/macos/bin:$PATH make -j6 install && \
+    cd ../.. && rm -rf wxWidgets
+
+# Build dependency: portaudio
+RUN git clone https://github.com/PortAudio/portaudio.git && \
+    cd portaudio && \
+    mkdir build_windows && \
+    cd build_windows && \
+    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
+    PATH=/opt/windows/bin:$PATH make -j6 install && \
+    cd .. && mkdir build_macos && cd build_macos && \
+    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
+    PATH=/opt/macos/bin:$PATH make -j6 install && \
+    cd ../.. && rm -rf portaudio
+
 ## Build dependency: hamlib
-#COPY hamlib-windows.patch /hamlib-windows.patch
-#RUN git clone -b 4.6 https://github.com/Hamlib/hamlib.git && \
-#    cd hamlib && \
-#    patch -p1 < /hamlib-windows.patch && \
-#    ./bootstrap && \
-#    PATH=/opt/windows/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 && \
-#    PATH=/opt/windows/bin:$PATH make -j6 && \
-#    PATH=/opt/windows/bin:$PATH make install && \
-#    make distclean && ./bootstrap && \
-#    PATH=/opt/macos/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --without-libusb CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 CXXFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 && \
-#    PATH=/opt/macos/bin:$PATH make -j6 && \
-#    PATH=/opt/macos/bin:$PATH make install && \
-#    cd .. && rm -rf hamlib && rm hamlib-windows.patch
-#
+COPY hamlib-windows.patch /hamlib-windows.patch
+RUN git clone -b 4.6 https://github.com/Hamlib/hamlib.git && \
+    cd hamlib && \
+    patch -p1 < /hamlib-windows.patch && \
+    ./bootstrap && \
+    PATH=/opt/windows/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 && \
+    PATH=/opt/windows/bin:$PATH make -j6 && \
+    PATH=/opt/windows/bin:$PATH make install && \
+    make distclean && ./bootstrap && \
+    PATH=/opt/macos/bin:$PATH CC=x86_64-apple-darwin24-clang CXX=x86_64-apple-darwin24-clang++ ./configure --without-cxx-binding --enable-shared --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --without-libusb CFLAGS=-g\ -O2\ -mmacosx-version-min=10.13\ -arch\ x86_64\ -arch\ arm64 CXXFLAGS=-g\ -O2\ -mmacosx-version-min=10.13\ -arch\ x86_64\ -arch\ arm64 && \
+    PATH=/opt/macos/bin:$PATH make -j6 && \
+    PATH=/opt/macos/bin:$PATH make install && \
+    cd .. && rm -rf hamlib && rm hamlib-windows.patch
+
 ## Build dependency: libsndfile
-#RUN wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz && \
-#    tar xvzf libsndfile-1.0.28.tar.gz && \
-#    cd libsndfile-1.0.28 && \
-#    autoreconf -i && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-external-libs --disable-shared --disable-sqlite && \
-#    PATH=/opt/windows/bin:$PATH make -j6 && \
-#    PATH=/opt/windows/bin:$PATH make install && \
-#    make distclean && autoreconf -i && \
-#    PATH=/opt/macos/bin:$PATH ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-external-libs --disable-shared --disable-sqlite CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
-#    PATH=/opt/macos/bin:$PATH make -j6 && \
-#    PATH=/opt/macos/bin:$PATH make install && \
-#    cd .. && rm -rf libsndfile*
-#
-## Build dependency: speexdsp
-#RUN git clone https://github.com/xiph/speexdsp && \
-#    cd speexdsp && \
-#    ./autogen.sh && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-examples && \
-#    PATH=/opt/windows/bin:$PATH make -j6 && \
-#    PATH=/opt/windows/bin:$PATH make install && \
-#    make distclean && \
-#    ./autogen.sh && PATH=/opt/macos/bin:$PATH ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-examples CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
-#    PATH=/opt/macos/bin:$PATH make -j6 && \
-#    PATH=/opt/macos/bin:$PATH make install && \
-#    cd .. && rm -rf speexdsp
+RUN wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz && \
+    tar xvzf libsndfile-1.0.28.tar.gz && \
+    cd libsndfile-1.0.28 && \
+    autoreconf -i && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-external-libs --disable-shared --disable-sqlite && \
+    PATH=/opt/windows/bin:$PATH make -j6 && \
+    PATH=/opt/windows/bin:$PATH make install && \
+    make distclean && autoreconf -i && \
+    PATH=/opt/macos/bin:$PATH CC=x86_64-apple-darwin24-clang CXX=x86_64-apple-darwin24-clang++ ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-external-libs --disable-shared --disable-sqlite CFLAGS=-g\ -O2\ -mmacosx-version-min=10.13\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
+    PATH=/opt/macos/bin:$PATH make -j6 && \
+    PATH=/opt/macos/bin:$PATH make install && \
+    cd .. && rm -rf libsndfile*
+
+# Build dependency: speexdsp
+RUN git clone https://github.com/xiph/speexdsp && \
+    cd speexdsp && \
+    ./autogen.sh && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-examples && \
+    PATH=/opt/windows/bin:$PATH make -j6 && \
+    PATH=/opt/windows/bin:$PATH make install && \
+    make distclean && \
+    ./autogen.sh && PATH=/opt/macos/bin:$PATH CC=x86_64-apple-darwin24-clang CXX=x86_64-apple-darwin24-clang++ ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-examples CFLAGS=-g\ -O2\ -mmacosx-version-min=10.13\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
+    PATH=/opt/macos/bin:$PATH make -j6 && \
+    PATH=/opt/macos/bin:$PATH make install && \
+    cd .. && rm -rf speexdsp
 
 # Copy build script
 COPY build_freedv.sh /build_freedv.sh

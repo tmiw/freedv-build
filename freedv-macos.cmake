@@ -2,6 +2,7 @@ set(CMAKE_SYSTEM_NAME Darwin)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 set(CMAKE_OSX_SYSROOT /opt/macos/SDK/MacOSX15.sdk)
 set(triple ${CMAKE_SYSTEM_PROCESSOR}-apple-darwin24)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 
 set(CMAKE_C_COMPILER ${triple}-clang)
 set(CMAKE_C_COMPILER_TARGET ${triple})
