@@ -46,6 +46,20 @@ RUN git clone https://github.com/tpoechtrager/osxcross && \
 # TBD -- only using x86 for now due to PyTorch not having an ARM for Windows version.
 COPY freedv-mingw-llvm-aarch64.cmake /freedv-mingw-llvm-aarch64.cmake
 COPY freedv-mingw-llvm-x86_64.cmake /freedv-mingw-llvm-x86_64.cmake
+COPY freedv-macos.cmake /freedv-macos.cmake
+
+# Add symlink for install_name_tool
+RUN ln -s /opt/macos/bin/x86_64-apple-darwin24-install_name_tool /opt/macos/bin/install_name_tool
+
+# Build macdylibbundler (needed for FreeDV .app generation)
+RUN git clone https://github.com/auriamg/macdylibbundler && \
+    cd macdylibbundler && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j6 && \
+    cp dylibbundler /usr/bin && \
+    cd ../.. && rm -rf macdylibbundler
 
 # Build dependency: libsamplerate
 RUN git clone https://github.com/libsndfile/libsamplerate.git && \
@@ -55,62 +69,111 @@ RUN git clone https://github.com/libsndfile/libsamplerate.git && \
     cd build_windows && \
     PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
     PATH=/opt/windows/bin:$PATH make -j6 install && \
-    cd ../.. && rm -rf libsamplerate
+    cd .. && mkdir build_macos && cd build_macos && \
+    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"  -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
+    PATH=/opt/macos/bin:$PATH make -j6 install && \
+    cd .. && rm -rf libsamplerate
 
-# Build dependency: socket.io
+# Build dependency: OpenSSL
+RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz && \
+    tar xvzf openssl-3.4.0.tar.gz && \
+    cd openssl-3.4.0 && \
+    mkdir build_macos_x86 && cd build_macos_x86 && \
+    PATH=/opt/macos/bin:$PATH CC=clang CXX=clang++ CROSS_COMPILE=x86_64-apple-darwin24- ../Configure --prefix=/opt/macos no-asm darwin64-x86_64-cc && \
+    PATH=/opt/macos/bin:$PATH make -j6 && \
+    PATH=/opt/macos/bin:$PATH make install && \
+    cd .. && mkdir build_macos_arm64 && cd build_macos_arm64 && \
+    PATH=/opt/macos/bin:$PATH CC=clang CXX=clang++ CROSS_COMPILE=arm64-apple-darwin24- ../Configure --prefix=/opt/macos no-asm darwin64-arm64-cc && \
+    PATH=/opt/macos/bin:$PATH make -j6 && \
+    cd .. && \
+    PATH=/opt/macos/bin:$PATH lipo -create build_macos_x86/libcrypto.a build_macos_arm64/libcrypto.a -output /opt/macos/lib/libcrypto.a && \
+    PATH=/opt/macos/bin:$PATH lipo -create build_macos_x86/libcrypto.3.dylib build_macos_arm64/libcrypto.3.dylib -output /opt/macos/lib/libcrypto.3.dylib && \
+    PATH=/opt/macos/bin:$PATH lipo -create build_macos_x86/libssl.a build_macos_arm64/libssl.a -output /opt/macos/lib/libssl.a && \
+    PATH=/opt/macos/bin:$PATH lipo -create build_macos_x86/libssl.3.dylib build_macos_arm64/libssl.3.dylib -output /opt/macos/lib/libssl.3.dylib && \
+    PATH=/opt/macos/bin:$PATH install_name_tool -id '@rpath/libcrypto.3.dylib' /opt/macos/lib/libcrypto.3.dylib && \
+    PATH=/opt/macos/bin:$PATH install_name_tool -id '@rpath/libssl.3.dylib' /opt/macos/lib/libssl.3.dylib && \
+    mkdir build_windows && cd build_windows && \
+    PATH=/opt/windows/bin:$PATH CC=clang CXX=clang++ CROSS_COMPILE=x86_64-w64-mingw32- ../Configure --prefix=/opt/windows mingw64 && \
+    PATH=/opt/windows/bin:$PATH make -j6 && \
+    PATH=/opt/windows/bin:$PATH make install && \
+    cd ../.. && rm -rf openssl*
+
+## Build dependency: socket.io
 RUN git clone --recursive https://github.com/socketio/socket.io-client-cpp.git && \
     cd socket.io-client-cpp && \
     mkdir build_windows && \
     cd build_windows && \
-    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DBUILD_SHARED_LIBS=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
+    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DBUILD_SHARED_LIBS=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake -DOPENSSL_ROOT_DIR=/opt/windows .. && \
     PATH=/opt/windows/bin:$PATH make -j6 install && \
+    cd .. && \
+    mkdir build_macos && cd build_macos && \
+    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"  -DBUILD_SHARED_LIBS=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake -DOPENSSL_ROOT_DIR=/opt/macos .. && \
+    PATH=/opt/macos/bin:$PATH make -j6 install && \
     cd ../.. && rm -rf socket.io-client-cpp
 
-# Build depednency: wxWidgets
-RUN git clone --recursive -b v3.2.6 https://github.com/wxWidgets/wxWidgets.git && \
-    cd wxWidgets && \
-    mkdir build_windows && \
-    cd build_windows && \
-    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DwxBUILD_SHARED=OFF -DwxBUILD_SHARED=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
-    PATH=/opt/windows/bin:$PATH make -j6 install && \
-    cd ../.. && rm -rf wxWidgets
-
-# Build dependency: portaudio
-RUN git clone https://github.com/PortAudio/portaudio.git && \
-    cd portaudio && \
-    mkdir build_windows && \
-    cd build_windows && \
-    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
-    PATH=/opt/windows/bin:$PATH make -j6 install && \
-    cd ../.. && rm -rf portaudio
-
-# Build dependency: hamlib
-COPY hamlib-windows.patch /hamlib-windows.patch
-RUN git clone -b 4.6 https://github.com/Hamlib/hamlib.git && \
-    cd hamlib && \
-    patch -p1 < /hamlib-windows.patch && \
-    ./bootstrap && \
-    PATH=/opt/windows/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 && \
-    PATH=/opt/windows/bin:$PATH make -j6 && \
-    PATH=/opt/windows/bin:$PATH make install && \
-    cd .. && rm -rf hamlib && rm hamlib-windows.patch
-
-# Build dependency: libsndfile
-RUN wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz && \
-    tar xvzf libsndfile-1.0.28.tar.gz && \
-    cd libsndfile-1.0.28 && \
-    autoreconf -i && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-external-libs --disable-shared --disable-sqlite && \
-    PATH=/opt/windows/bin:$PATH make -j6 && \
-    PATH=/opt/windows/bin:$PATH make install && \
-    cd .. && rm -rf libsndfile*
-
-# Build dependency: speexdsp
-RUN git clone https://github.com/xiph/speexdsp && \
-    cd speexdsp && \
-    ./autogen.sh && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-examples && \
-    PATH=/opt/windows/bin:$PATH make -j6 && \
-    PATH=/opt/windows/bin:$PATH make install && \
-    cd .. && rm -rf speexdsp
+## Build depednency: wxWidgets
+#RUN git clone --recursive -b v3.2.6 https://github.com/wxWidgets/wxWidgets.git && \
+#    cd wxWidgets && \
+#    mkdir build_windows && \
+#    cd build_windows && \
+#    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DwxBUILD_SHARED=OFF -DwxBUILD_SHARED=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
+#    PATH=/opt/windows/bin:$PATH make -j6 install && \
+#    cd .. && mkdir build_macos && cd build_macos && \
+#    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DwxBUILD_SHARED=OFF -DwxBUILD_SHARED=OFF -DwxBUILD_MONOLITHIC=OFF -DwxUSE_STL=OFF -DwxUSE_STL=builtin -DwxUSE_ZLIB=builtin -DwxUSE_EXPAT=builtin -DwxUSE_LIBJPEG=builtin -DwxUSE_LIBPNG=builtin -DwxUSE_LIBTIFF=builtin -DwxUSE_NANOSVG=OFF -DwxUSE_LIBLZMA=OFF -DwxUSE_LIBSDL=OFF -DwxUSE_LIBMSPACK=OFF -DwxUSE_LIBICONV=OFF -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
+#    PATH=/opt/macos/bin:$PATH make -j6 install && \
+#    cd ../.. && rm -rf wxWidgets
+#
+## Build dependency: portaudio
+#RUN git clone https://github.com/PortAudio/portaudio.git && \
+#    cd portaudio && \
+#    mkdir build_windows && \
+#    cd build_windows && \
+#    PATH=/opt/windows/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/windows -DCMAKE_TOOLCHAIN_FILE=/freedv-mingw-llvm-x86_64.cmake .. && \
+#    PATH=/opt/windows/bin:$PATH make -j6 install && \
+#    cd .. && mkdir build_macos && cd build_macos && \
+#    PATH=/opt/macos/bin:$PATH cmake -DCMAKE_INSTALL_PREFIX=/opt/macos -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_TOOLCHAIN_FILE=/freedv-macos.cmake .. && \
+#    PATH=/opt/macos/bin:$PATH make -j6 install && \
+#    cd ../.. && rm -rf portaudio
+#
+## Build dependency: hamlib
+#COPY hamlib-windows.patch /hamlib-windows.patch
+#RUN git clone -b 4.6 https://github.com/Hamlib/hamlib.git && \
+#    cd hamlib && \
+#    patch -p1 < /hamlib-windows.patch && \
+#    ./bootstrap && \
+#    PATH=/opt/windows/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 && \
+#    PATH=/opt/windows/bin:$PATH make -j6 && \
+#    PATH=/opt/windows/bin:$PATH make install && \
+#    make distclean && ./bootstrap && \
+#    PATH=/opt/macos/bin:$PATH ./configure --without-cxx-binding --enable-shared --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --without-libusb CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 CXXFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 && \
+#    PATH=/opt/macos/bin:$PATH make -j6 && \
+#    PATH=/opt/macos/bin:$PATH make install && \
+#    cd .. && rm -rf hamlib && rm hamlib-windows.patch
+#
+## Build dependency: libsndfile
+#RUN wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz && \
+#    tar xvzf libsndfile-1.0.28.tar.gz && \
+#    cd libsndfile-1.0.28 && \
+#    autoreconf -i && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-external-libs --disable-shared --disable-sqlite && \
+#    PATH=/opt/windows/bin:$PATH make -j6 && \
+#    PATH=/opt/windows/bin:$PATH make install && \
+#    make distclean && autoreconf -i && \
+#    PATH=/opt/macos/bin:$PATH ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-external-libs --disable-shared --disable-sqlite CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
+#    PATH=/opt/macos/bin:$PATH make -j6 && \
+#    PATH=/opt/macos/bin:$PATH make install && \
+#    cd .. && rm -rf libsndfile*
+#
+## Build dependency: speexdsp
+#RUN git clone https://github.com/xiph/speexdsp && \
+#    cd speexdsp && \
+#    ./autogen.sh && PATH=/opt/windows/bin:$PATH ./configure --prefix=/opt/windows --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --disable-examples && \
+#    PATH=/opt/windows/bin:$PATH make -j6 && \
+#    PATH=/opt/windows/bin:$PATH make install && \
+#    make distclean && \
+#    ./autogen.sh && PATH=/opt/macos/bin:$PATH ./configure --prefix=/opt/macos --host=x86_64-apple-darwin24 --target=x86_64-apple-darwin24 --disable-examples CFLAGS=-g\ -O2\ -mmacosx-version-min=10.9\ -arch\ x86_64\ -arch\ arm64 LDFLAGS=-arch\ x86_64\ -arch\ arm64 && \
+#    PATH=/opt/macos/bin:$PATH make -j6 && \
+#    PATH=/opt/macos/bin:$PATH make install && \
+#    cd .. && rm -rf speexdsp
 
 # Copy build script
 COPY build_freedv.sh /build_freedv.sh
